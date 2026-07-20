@@ -31,7 +31,7 @@ jobs:
 
     - name: Prepare Web Directory
       run: |
-        mkdir -id www
+        mkdir -p www
         cp index.html www/
         if [ -f package.json ]; then cp package.json www/; fi
 
