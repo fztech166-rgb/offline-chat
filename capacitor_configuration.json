@@ -1,0 +1,6 @@
+{
+  "appId": "com.offline.meshchat",
+  "appName": "Offline Chat",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}

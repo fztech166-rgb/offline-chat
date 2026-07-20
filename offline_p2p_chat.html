@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অফলাইন পিয়ার-টু-পিয়ার চ্যাট</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --primary: #00e676;
+            --primary-hover: #00c853;
+            --text-color: #ffffff;
+            --text-muted: #aaaaaa;
+            --msg-self: #005c4b;
+            --msg-peer: #202c33;
+            --border-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--container-bg);
+            border-radius: 15px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        header {
+            background: #202c33;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h2 {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: #ff5252;
+            color: white;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .status-badge.connected {
+            background: var(--primary);
+        }
+
+        /* সংযোগ স্থাপন স্ক্রিন */
+        .setup-screen {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            background: #121212;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 8px;
+            font-size: 0.8rem;
+            resize: none;
+            margin-bottom: 10px;
+        }
+
+        /* QR Code Container */
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 15px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* চ্যাট স্ক্রিন */
+        .chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            flex: 1;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #0b141a;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .msg-self {
+            background: var(--msg-self);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg-peer {
+            background: var(--msg-peer);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background: #202c33;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            background: #2a3942;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        .input-area button {
+            width: auto;
+            padding: 0 20px;
+        }
+
+        /* কাস্টম নোটিফিকেশন অ্যালার্ট */
+        .alert-box {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 1000;
+            font-size: 0.9rem;
+            border: 1px solid var(--primary);
+        }
+    </style>
+    <!-- QR Code তৈরি করার জন্য ছোট্ট একটি অফলাইন লাইব্রেরি -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+</head>
+<body>
+
+    <div class="alert-box" id="customAlert"></div>
+
+    <div class="app-container">
+        <header>
+            <h2>অফলাইন পিটুপি চ্যাট</h2>
+            <div class="status-badge" id="statusBadge">কানেক্টেড নয়</div>
+        </header>
+
+        <!-- সেটিংস / কানেকশন উইন্ডো -->
+        <div class="setup-screen" id="setupScreen">
+            <p style="text-align: center;">ইন্টারনেট ছাড়া চ্যাট করতে এক ফোন থেকে হটস্পট অন করে অন্য ফোনটি কানেক্ট করুন। তারপর নিচের ধাপগুলো অনুসরণ করুন।</p>
+            
+            <!-- ধাপ ১: হোস্ট তৈরি করা -->
+            <div class="card">
+                <h3>১ম ফোন: হোস্ট (Host) হোন</h3>
+                <p>আপনি যদি ১ম ফোন হন, তবে হোস্ট হিসেবে কানেকশন তৈরি করুন।</p>
+                <button id="btnCreateHost">কানেকশন কোড তৈরি করুন</button>
+                <div id="hostArea" style="display:none; margin-top:15px;">
+                    <p>নিচের কিউআর কোডটি ২য় ফোন দিয়ে স্ক্যান করুন অথবা কোডটি কপি করে পাঠান:</p>
+                    <div class="qr-container">
+                        <canvas id="qrCanvas"></canvas>
+                    </div>
+                    <button id="btnCopyOffer" style="background:#444; color:#fff; margin-bottom:10px;">কোড কপি করুন</button>
+                    <textarea id="txtOfferCode" readonly></textarea>
+                    
+                    <p style="margin-top:10px;">এবার ২য় ফোনের তৈরি করা উত্তর (Answer) কোডটি নিচে পেস্ট করে কানেক্ট করুন:</p>
+                    <textarea id="txtAnswerInput" placeholder="২য় ফোনের Answer কোডটি এখানে দিন..."></textarea>
+                    <button id="btnConnectHost">কানেক্ট করুন</button>
+                </div>
+            </div>
+
+            <!-- ধাপ ২: জয়েন করা -->
+            <div class="card">
+                <h3>২য় ফোন: জয়েন (Join) করুন</h3>
+                <p>আপনি যদি ২য় ফোন হন, তবে ১ম ফোনের কোডটি স্ক্যান/পেস্ট করে জয়েন করুন।</p>
+                <textarea id="txtOfferInput" placeholder="১ম ফোনের কোডটি এখানে পেস্ট করুন..."></textarea>
+                <button id="btnCreateAnswer">উত্তর কোড (Answer) তৈরি করুন</button>
+                
+                <div id="joinArea" style="display:none; margin-top:15px;">
+                    <p>নিচের উত্তর কিউআর কোডটি ১ম ফোন দিয়ে স্ক্যান করান অথবা কোডটি ১ম ফোনে পাঠান:</p>
+                    <div class="qr-container">
+                        <canvas id="qrAnswerCanvas"></canvas>
+                    </div>
+                    <button id="btnCopyAnswer" style="background:#444; color:#fff; margin-bottom:10px;">উত্তর কোড কপি করুন</button>
+                    <textarea id="txtAnswerCode" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- মূল চ্যাটিং স্ক্রিন -->
+        <div class="chat-screen" id="chatScreen">
+            <div class="chat-box" id="chatBox">
+                <div class="message msg-peer">স্বাগতম! অফলাইন কানেকশন সফল হয়েছে। এখন নিরাপদে চ্যাট করুন।</div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="txtMessage" placeholder="মেসেজ লিখুন..." onkeypress="handleKeyPress(event)">
+                <button id="btnSend">পাঠান</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const setupScreen = document.getElementById('setupScreen');
+        const chatScreen = document.getElementById('chatScreen');
+        const statusBadge = document.getElementById('statusBadge');
+        const chatBox = document.getElementById('chatBox');
+        const txtMessage = document.getElementById('txtMessage');
+        const btnSend = document.getElementById('btnSend');
+        const customAlert = document.getElementById('customAlert');
+
+        let localConnection;
+        let dataChannel;
+
+        // WebRTC কনফিগারেশন (অফলাইন মোড, তাই কোনো ICE সার্ভার লাগবে না)
+        const configuration = {
+            iceServers: [] 
+        };
+
+        // কাস্টম অ্যালার্ট ফাংশন
+        function showAlert(message) {
+            customAlert.textContent = message;
+            customAlert.style.display = 'block';
+            setTimeout(() => {
+                customAlert.style.display = 'none';
+            }, 3000);
+        }
+
+        // ক্লিপবোর্ডে কপি করার ফাংশন
+        function copyToClipboard(textId) {
+            const copyText = document.getElementById(textId);
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            showAlert("কোড ক্লিপবোর্ডে কপি করা হয়েছে!");
+        }
+
+        // QR Code জেনারেটর
+        function generateQRCode(canvasId, text) {
+            new QRious({
+                element: document.getElementById(canvasId),
+                value: text,
+                size: 200
+            });
+        }
+
+        // --- হোস্ট (১ম ফোন) লজিক ---
+        document.getElementById('btnCreateHost').addEventListener('click', async () => {
+            localConnection = new RTCPeerConnection(configuration);
+            
+            // ডেটা চ্যানেল তৈরি
+            dataChannel = localConnection.createDataChannel("chat");
+            setupDataChannelEvents(dataChannel);
+
+            // ICE ক্যান্ডিডেট ম্যানেজমেন্ট
+            localConnection.onicecandidate = e => {
+                if (!e.candidate) {
+                    // সমস্ত লোকাল ক্যান্ডিডেট লোড হওয়ার পর ফাইনাল অফার কোড তৈরি হবে
+                    const offerBase64 = btoa(JSON.stringify(localConnection.localDescription));
+                    document.getElementById('txtOfferCode').value = offerBase64;
+                    generateQRCode('qrCanvas', offerBase64);
+                    document.getElementById('hostArea').style.display = 'block';
+                }
+            };
+
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+        });
+
+        document.getElementById('btnCopyOffer').addEventListener('click', () => {
+            copyToClipboard('txtOfferCode');
+        });
+
+        document.getElementById('btnConnectHost').addEventListener('click', async () => {
+            const answerInput = document.getElementById('txtAnswerInput').value.trim();
+            if (!answerInput) {
+                showAlert("দয়া করে ২য় ফোনের Answer কোডটি প্রবেশ করান!");
+                return;
+            }
+            try {
+                const decodedAnswer = JSON.parse(atob(answerInput));
+                await localConnection.setRemoteDescription(new RTCSessionDescription(decodedAnswer));
+                showAlert("কানেক্ট করা হচ্ছে...");
+            } catch (err) {
+                showAlert("ভুল কোড দেওয়া হয়েছে! আবার চেষ্টা করুন।");
+            }
+        });
+
+        // --- জয়েনিং (২য় ফোন) লজিক ---
+        document.getElementById('btnCreateAnswer').addEventListener('click', async () => {
+            const offerInput = document.getElementById('txtOfferInput').value.trim();
+            if (!offerInput) {
+                showAlert("দয়া করে ১ম ফোনের কানেকশন কোডটি দিন!");
+                return;
+            }
+
+            try {
+                localConnection = new RTCPeerConnection(configuration);
+                
+                // রিমোট থেকে ডাটা চ্যানেল রিসিভ করা
+                localConnection.ondatachannel = e => {
+                    dataChannel = e.channel;
+                    setupDataChannelEvents(dataChannel);
+                };
+
+                const decodedOffer = JSON.parse(atob(offerInput));
+                await localConnection.setRemoteDescription(new RTCSessionDescription(decodedOffer));
+
+                const answer = await localConnection.createAnswer();
+                await localConnection.setLocalDescription(answer);
+
+                localConnection.onicecandidate = e => {
+                    if (!e.candidate) {
+                        const answerBase64 = btoa(JSON.stringify(localConnection.localDescription));
+                        document.getElementById('txtAnswerCode').value = answerBase64;
+                        generateQRCode('qrAnswerCanvas', answerBase64);
+                        document.getElementById('joinArea').style.display = 'block';
+                    }
+                };
+            } catch (err) {
+                showAlert("ভুল কোড দেওয়া হয়েছে! আবার চেষ্টা করুন।");
+            }
+        });
+
+        document.getElementById('btnCopyAnswer').addEventListener('click', () => {
+            copyToClipboard('txtAnswerCode');
+        });
+
+        // --- ডেটা চ্যানেল ইভেন্টস (মেসেজ আদান প্রদান) ---
+        function setupDataChannelEvents(channel) {
+            channel.onopen = () => {
+                statusBadge.textContent = "কানেক্টেড";
+                statusBadge.className = "status-badge connected";
+                setupScreen.style.display = "none";
+                chatScreen.style.display = "flex";
+                showAlert("কানেকশন সফল হয়েছে!");
+            };
+
+            channel.onclose = () => {
+                statusBadge.textContent = "ডিসকানেক্টেড";
+                statusBadge.className = "status-badge";
+                setupScreen.style.display = "flex";
+                chatScreen.style.display = "none";
+                showAlert("কানেকশন বিচ্ছিন্ন হয়েছে!");
+            };
+
+            channel.onmessage = e => {
+                appendMessage(e.data, 'msg-peer');
+            };
+        }
+
+        // মেসেজ পাঠানোর হ্যান্ডলার
+        function sendMessage() {
+            const message = txtMessage.value.trim();
+            if (message && dataChannel && dataChannel.readyState === "open") {
+                dataChannel.send(message);
+                appendMessage(message, 'msg-self');
+                txtMessage.value = "";
+            }
+        }
+
+        btnSend.addEventListener('click', sendMessage);
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // চ্যাট স্ক্রিনে মেসেজ যুক্ত করা
+        function appendMessage(text, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
