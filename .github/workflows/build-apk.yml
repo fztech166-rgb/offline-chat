@@ -29,9 +29,15 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
+    - name: Prepare Web Directory
+      run: |
+        mkdir -id www
+        cp index.html www/
+        if [ -f package.json ]; then cp package.json www/; fi
+
     - name: Initialize Capacitor Android
       run: |
-        npx cap init "Offline Chat" "com.offline.meshchat" --web-dir=.
+        npx cap init "Offline Chat" "com.offline.meshchat" --web-dir=www
         npx cap add android
 
     - name: Sync Web Code to Native Android
